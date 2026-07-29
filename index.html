@@ -54,13 +54,17 @@ body {
 .header-left { display: flex; align-items: center; gap: 14px; }
 
 .header-logo {
-  width: 46px; height: 46px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  width: 50px; height: 50px;
   border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; font-weight: bold;
-  color: #fff;
-  box-shadow: 0 3px 12px rgba(255, 111, 0, 0.4);
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+  flex-shrink: 0;
+  background: #fff;
+}
+.header-logo img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .header-title { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
@@ -629,7 +633,7 @@ tbody tr:nth-child(even) { background: #fafbfd; }
 <!-- 顶部导航 -->
 <header class="header">
   <div class="header-left">
-    <div class="header-logo">商</div>
+    <div class="header-logo"><img src="logo.jpg" alt="商会Logo"></div>
     <div>
       <div class="header-title">沈阳市年轻一代民营企业家商会 · BI 智能看板 V5</div>
       <div class="header-subtitle">SHENYANG YOUNG ENTREPRENEURS CHAMBER · DATA INTELLIGENCE</div>

@@ -675,7 +675,7 @@ tbody tr:nth-child(even) { background: #fafbfd; }
       <select id="filterGender"><option value="">全部</option><option value="男">男</option><option value="女">女</option></select>
     </div>
     <div class="filter-item">
-      <label>年龄段</label>
+      <label>年龄</label>
       <select id="filterAge"><option value="">全部</option></select>
     </div>
     <div class="filter-item">
@@ -793,7 +793,7 @@ tbody tr:nth-child(even) { background: #fafbfd; }
             <th>会员姓名</th>
             <th>会内职位</th>
             <th>性别</th>
-            <th>年龄段</th>
+            <th>年龄</th>
             <th>政治面貌分类</th>
             <th>所属行业</th>
             <th>区域</th>
@@ -808,7 +808,7 @@ tbody tr:nth-child(even) { background: #fafbfd; }
   <!-- 底部状态栏 -->
   <div class="footer">
     <div class="footer-info">
-      <span>&#128202; 数据源：商会分布地图（7.9完成版）</span>
+      <span>&#128202; 数据源：商会分布地图（7.28版）· 223条真实会员数据</span>
       <span>&#128337; 更新于：<span id="footerUpdateTime">--</span></span>
       <span>&#128100; 在籍：<span id="footerActive">--</span> 人</span>
       <span>&#9873; 中共党员：<span id="footerParty">--</span> 人</span>
@@ -830,6 +830,7 @@ tbody tr:nth-child(even) { background: #fafbfd; }
       <label>数据字段</label>
       <select id="customCardField" onchange="updateCustomCardPreview()">
         <option value="gender">性别</option>
+        <option value="age">年龄</option>
         <option value="ageGroup">年龄段</option>
         <option value="politicalStatus">政治面貌</option>
         <option value="industry">所属行业</option>
@@ -907,7 +908,8 @@ function parseCSV(text) {
   const fieldMap = {
     '姓名':'name','name':'name',
     '性别':'gender','gender':'gender',
-    '年龄段':'ageGroup','年龄':'ageGroup','age':'ageGroup',
+    '年龄':'age','age':'age',
+    '年龄段':'ageGroup','ageGroup':'ageGroup',
     '政治面貌':'politicalStatus','政治面貌分类':'politicalStatus','political':'politicalStatus',
     '所属行业':'industry','行业':'industry','industry':'industry',
     '区域':'region','region':'region',
@@ -916,6 +918,7 @@ function parseCSV(text) {
     '入会年份':'joinYear','入会时间':'joinYear','joinYear':'joinYear',
     '会费状态':'membershipStatus','状态':'membershipStatus','status':'membershipStatus',
     '所属企业':'company','企业':'company','company':'company',
+    '注册地址':'address','address':'address',
     '好人好事':'goodDeeds','goodDeeds':'goodDeeds'
   };
 
@@ -933,6 +936,9 @@ function parseCSV(text) {
     for (const [field, idx] of Object.entries(colMap)) {
       let val = cells[idx] || '';
       if (field === 'joinYear' || field === 'goodDeeds') {
+        val = parseInt(val) || 0;
+      }
+      if (field === 'age') {
         val = parseInt(val) || 0;
       }
       m[field] = val;
@@ -1113,7 +1119,8 @@ function renderOverview() {
   document.getElementById('overviewBadge').textContent = 'OVERVIEW · 共 ' + total + ' 人';
 }
 
-// 卡片点击 → 筛选
+// 卡片点击 → 筛选联动所有模块
+let activeCardIdx = -1;
 function cardClick(idx) {
   const filters = [
     {}, // 全部
@@ -1125,15 +1132,21 @@ function cardClick(idx) {
     {id:'filterPosition', val:'理事'},
     {id:'filterPosition', val:'会员'},
   ];
+  // 重置所有筛选
+  ['filterGender','filterAge','filterIndustry','filterRegion','filterPosition','filterPolitical'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  // 设置当前卡片筛选
   if (idx < filters.length && filters[idx].id) {
-    resetFilters();
     document.getElementById(filters[idx].id).value = filters[idx].val;
-    applyFilters();
-    document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
-  } else if (idx === 0 || idx === 3) {
-    resetFilters();
-    document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
   }
+  activeCardIdx = idx;
+  applyFilters();
+  // 高亮当前卡片
+  document.querySelectorAll('.overview-card').forEach((c, i) => {
+    c.style.outline = (i === idx) ? '3px solid #ff6f00' : '';
+    c.style.outlineOffset = (i === idx) ? '2px' : '';
+  });
 }
 
 // ========== 自定义卡片 ==========
@@ -1227,29 +1240,53 @@ function renderChartIndustry() {
 function renderChartAge() {
   const chart = getChart('chartAge');
   if (!chart) return;
-  const dataMap = {};
-  filteredData.forEach(m => { dataMap[m.ageGroup] = (dataMap[m.ageGroup] || 0) + 1; });
-  const order = ['25-30岁','30岁以下','31-35岁','30-39岁','36-40岁','40-49岁','41-45岁','46-50岁','50岁以上','51-55岁','未知'];
-  const ordered = order.filter(a => dataMap[a] !== undefined);
-  // 添加未在预定义顺序中的
-  Object.keys(dataMap).forEach(a => { if (!ordered.includes(a)) ordered.push(a); });
-  chart.setOption({
-    tooltip: { trigger: 'axis', formatter: '{b}: {c}人' },
-    grid: { left: '8%', right: '5%', bottom: '12%', top: '10%' },
-    xAxis: { type: 'category', data: ordered, axisLabel: { fontSize: 10, rotate: 25 } },
-    yAxis: { type: 'value', minInterval: 1 },
-    series: [{
-      type: 'bar', data: ordered.map(a => dataMap[a] || 0),
-      itemStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          {offset: 0, color: '#42a5f5'}, {offset: 1, color: '#1565c0'}
-        ]),
-        borderRadius: [6,6,0,0]
-      },
-      barWidth: '50%',
-      label: { show: true, position: 'top', fontSize: 11 }
-    }]
-  }, true);
+  // If we have exact age, use histogram by age; otherwise use ageGroup
+  const hasAge = filteredData.some(m => m.age && m.age > 0);
+  if (hasAge) {
+    const ageCounts = {};
+    filteredData.forEach(m => {
+      if (m.age && m.age > 0) {
+        ageCounts[m.age] = (ageCounts[m.age] || 0) + 1;
+      }
+    });
+    const ages = Object.keys(ageCounts).map(Number).sort((a,b) => a-b);
+    const values = ages.map(a => ageCounts[a]);
+    chart.setOption({
+      tooltip: { trigger: 'axis', formatter: p => p[0].name + '岁: ' + p[0].value + '人' },
+      grid: { left: '8%', right: '5%', bottom: '10%', top: '10%' },
+      xAxis: { type: 'category', data: ages.map(String), name: '年龄', axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'value', minInterval: 1, name: '人数' },
+      series: [{
+        type: 'bar', data: values,
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            {offset: 0, color: '#42a5f5'}, {offset: 1, color: '#1565c0'}
+          ]),
+          borderRadius: [6,6,0,0]
+        },
+        barWidth: '60%',
+        label: { show: true, position: 'top', fontSize: 11 }
+      }]
+    }, true);
+  } else {
+    const dataMap = {};
+    filteredData.forEach(m => { dataMap[m.ageGroup] = (dataMap[m.ageGroup] || 0) + 1; });
+    const order = ['25岁以下','25-30岁','31-35岁','36-40岁','41-45岁','46-50岁','50岁以上','未知'];
+    const ordered = order.filter(a => dataMap[a] !== undefined);
+    Object.keys(dataMap).forEach(a => { if (!ordered.includes(a)) ordered.push(a); });
+    chart.setOption({
+      tooltip: { trigger: 'axis', formatter: '{b}: {c}人' },
+      grid: { left: '8%', right: '5%', bottom: '12%', top: '10%' },
+      xAxis: { type: 'category', data: ordered, axisLabel: { fontSize: 10, rotate: 25 } },
+      yAxis: { type: 'value', minInterval: 1 },
+      series: [{
+        type: 'bar', data: ordered.map(a => dataMap[a] || 0),
+        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: '#42a5f5'}, {offset: 1, color: '#1565c0'}]), borderRadius: [6,6,0,0] },
+        barWidth: '50%',
+        label: { show: true, position: 'top', fontSize: 11 }
+      }]
+    }, true);
+  }
 }
 
 function renderChartPolitical() {
@@ -1432,13 +1469,35 @@ const cityMap = {
   '盘锦市':'211100','铁岭市':'211200','朝阳市':'211300','葫芦岛市':'211400'
 };
 
+// Logo散点符号
+const LOGO_SYMBOL = 'image://logo.jpg';
+
+// 城市/区域经纬度
+const geoCoords = {
+  '沈阳市':[123.43,41.80],'大连市':[121.61,38.91],'鞍山市':[122.85,41.12],'抚顺市':[123.96,41.87],
+  '本溪市':[123.76,41.29],'丹东市':[124.35,40.00],'锦州市':[121.13,41.10],'营口市':[122.23,40.67],
+  '阜新市':[121.67,42.02],'辽阳市':[123.17,41.27],'盘锦市':[122.07,41.12],'铁岭市':[123.84,42.29],
+  '朝阳市':[120.45,41.57],'葫芦岛市':[120.84,40.71],'上海市':[121.47,31.23],'重庆市':[106.55,29.56],
+  '新民市':[122.83,41.99],'北票市':[120.77,41.80]
+};
+
+const shenyangDistrictCoords = {
+  '和平区':[123.42,41.79],'沈河区':[123.46,41.80],'大东区':[123.47,41.81],'皇姑区':[123.42,41.82],
+  '铁西区':[123.38,41.80],'苏家屯区':[123.34,41.66],'浑南区':[123.45,41.76],'沈北新区':[123.53,41.91],
+  '于洪区':[123.31,41.79],'辽中区':[122.77,41.52],'康平县':[123.35,42.75],'法库县':[123.41,42.51],
+  '新民市':[122.83,41.99]
+};
+
+// 职位颜色
+const posColors = {'会长':'#ff8f00','副会长':'#1565c0','常务副会长':'#1565c0','理事':'#2e7d32','会员':'#7b1fa2'};
+
 async function renderMapProvince() {
   const chart = getChart('mapProvince');
   if (!chart) return;
   const backBtn = document.getElementById('mapBackBtn');
 
   if (mapDrillDown) {
-    // 下钻到城市
+    // 下钻到城市 - 显示企业散点
     backBtn.classList.add('show');
     const cityCode = cityMap[mapDrillDown];
     if (cityCode) {
@@ -1446,21 +1505,58 @@ async function renderMapProvince() {
       if (ok) {
         const cityData = filteredData.filter(m => m.region === mapDrillDown);
         const counts = {};
-        cityData.forEach(m => { counts[m.district || m.region] = (counts[m.district || m.region] || 0) + 1; });
-        const data = Object.entries(counts).map(([name, value]) => ({name, value}));
+        cityData.forEach(m => { const d = m.district || m.region; counts[d] = (counts[d]||0)+1; });
+        const areaData = Object.entries(counts).map(([name, value]) => ({name, value}));
+        // 散点数据 - 每个会员一个点
+        const scatterData = cityData.map(m => {
+          const coord = shenyangDistrictCoords[m.district] || geoCoords[m.region] || geoCoords[mapDrillDown];
+          return {
+            name: m.name,
+            value: [coord ? coord[0] : 123.43, coord ? coord[1] : 41.80, 1],
+            memberData: m
+          };
+        }).filter(d => d.value[0]);
         chart.setOption({
-          tooltip: { trigger: 'item', formatter: '{b}: {c}人' },
+          tooltip: {
+            trigger: 'item',
+            formatter: function(p) {
+              if (p.seriesType === 'scatter' && p.data.memberData) {
+                const m = p.data.memberData;
+                return '<div style="max-width:280px">' +
+                  '<b style="font-size:13px">' + (m.name||'') + '</b><br/>' +
+                  '<span style="color:#666">' + (m.company||'') + '</span><br/>' +
+                  '<span style="font-size:11px">' +
+                  '职位: ' + (m.position||'-') + ' | ' +
+                  '行业: ' + (m.industry||'-') + '<br/>' +
+                  '年龄: ' + (m.age||'-') + '岁 | ' +
+                  '区县: ' + (m.district||m.region||'-') +
+                  '</span></div>';
+              }
+              return p.name + ': ' + (p.value||0) + '人';
+            }
+          },
           visualMap: {
-            min: 0, max: Math.max(...data.map(d => d.value), 1),
+            min: 0, max: Math.max(...areaData.map(d => d.value), 1),
             inRange: { color: ['#e3f2fd','#90caf9','#42a5f5','#1565c0','#0d47a1'] },
             textStyle: { fontSize: 11 }, left: 10, bottom: 10
           },
-          series: [{
-            type: 'map', map: 'city_'+mapDrillDown, roam: true,
-            label: { show: true, fontSize: 10 },
-            emphasis: { label: { fontSize: 12, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffd166' } },
-            data: data
-          }]
+          series: [
+            {
+              type: 'map', map: 'city_'+mapDrillDown, roam: true,
+              label: { show: true, fontSize: 10 },
+              emphasis: { label: { fontSize: 12, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffd166' } },
+              data: areaData
+            },
+            {
+              type: 'scatter', coordinateSystem: 'geo', roam: true,
+              geoIndex: 0,
+              symbol: LOGO_SYMBOL, symbolSize: 20,
+              data: scatterData,
+              tooltip: { show: true },
+              zlevel: 2
+            }
+          ],
+          geo: { map: 'city_'+mapDrillDown, roam: true, silent: true }
         }, true);
         return;
       }
@@ -1470,9 +1566,8 @@ async function renderMapProvince() {
   backBtn.classList.remove('show');
   const ok = await loadMap('https://geo.datav.aliyun.com/areas_v3/bound/210000_full.json', 'liaoning');
   if (!ok) {
-    // Fallback: bar chart
     const counts = {};
-    filteredData.forEach(m => { counts[m.region] = (counts[m.region] || 0) + 1; });
+    filteredData.forEach(m => { if(m.region) counts[m.region] = (counts[m.region] || 0) + 1; });
     const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
     chart.setOption({
       tooltip: { trigger: 'axis', formatter: '{b}: {c}人' },
@@ -1489,28 +1584,51 @@ async function renderMapProvince() {
   }
 
   const counts = {};
-  filteredData.forEach(m => { counts[m.region] = (counts[m.region] || 0) + 1; });
-  const data = Object.entries(counts).map(([name, value]) => ({name, value}));
+  filteredData.forEach(m => { if(m.region) counts[m.region] = (counts[m.region] || 0) + 1; });
+  const areaData = Object.entries(counts).map(([name, value]) => ({name, value}));
+  // 散点数据 - 按城市聚合，每个城市一个logo点
+  const scatterData = Object.entries(counts).map(([city, count]) => {
+    const coord = geoCoords[city];
+    if (!coord) return null;
+    return { name: city, value: [coord[0], coord[1], count] };
+  }).filter(d => d);
+
   chart.setOption({
     tooltip: {
       trigger: 'item',
       formatter: function(p) {
+        if (p.seriesType === 'scatter') {
+          return p.name + ': ' + p.value[2] + '人';
+        }
         return p.name + ': ' + (p.value || 0) + '人';
       }
     },
     visualMap: {
-      min: 0, max: Math.max(...data.map(d => d.value), 1),
+      min: 0, max: Math.max(...areaData.map(d => d.value), 1),
       inRange: { color: ['#e3f2fd','#90caf9','#42a5f5','#1565c0','#0d47a1'] },
       textStyle: { fontSize: 11 }, left: 10, bottom: 10
     },
-    series: [{
-      type: 'map', map: 'liaoning', roam: true,
-      label: { show: true, fontSize: 10 },
-      emphasis: { label: { fontSize: 12, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffd166' } },
-      data: data,
-      // 点击下钻
-      select: { disabled: true }
-    }]
+    geo: { map: 'liaoning', roam: true, silent: true, zoom: 1.1,
+      label: { show: false },
+      itemStyle: { areaColor: '#e3f2fd', borderColor: '#90caf9' },
+      emphasis: { itemStyle: { areaColor: '#ffd166' } }
+    },
+    series: [
+      {
+        type: 'map', map: 'liaoning', roam: true, geoIndex: 0,
+        label: { show: true, fontSize: 10 },
+        emphasis: { label: { fontSize: 12, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffd166' } },
+        data: areaData,
+        select: { disabled: true }
+      },
+      {
+        type: 'scatter', coordinateSystem: 'geo',
+        symbol: LOGO_SYMBOL, symbolSize: 22,
+        data: scatterData,
+        label: { show: true, formatter: p => p.value[2] + '人', position: 'right', fontSize: 11, color: '#1565c0', fontWeight: 'bold' },
+        zlevel: 2
+      }
+    ]
   }, true);
 
   // 点击事件 - 下钻
@@ -1533,10 +1651,9 @@ async function renderMapShenyang() {
   if (!chart) return;
   const ok = await loadMap('https://geo.datav.aliyun.com/areas_v3/bound/210100_full.json', 'shenyang');
   if (!ok) {
-    // Fallback: bar chart - 显示各区分布
     const syData = filteredData;
     const counts = {};
-    syData.forEach(m => { counts[m.district || m.region] = (counts[m.district || m.region] || 0) + 1; });
+    syData.forEach(m => { const d = m.district || m.region; if(d) counts[d] = (counts[d] || 0) + 1; });
     const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
     chart.setOption({
       tooltip: { trigger: 'axis', formatter: '{b}: {c}人' },
@@ -1552,26 +1669,53 @@ async function renderMapShenyang() {
     return;
   }
 
-  // 使用区县字段做地图数据
   const counts = {};
   filteredData.forEach(m => {
     const dist = m.district || m.region;
     if (dist) counts[dist] = (counts[dist] || 0) + 1;
   });
-  const data = Object.entries(counts).map(([name, value]) => ({name, value}));
+  const areaData = Object.entries(counts).map(([name, value]) => ({name, value}));
+  // 散点 - 按区县聚合
+  const scatterData = Object.entries(counts).map(([dist, count]) => {
+    const coord = shenyangDistrictCoords[dist];
+    if (!coord) return null;
+    return { name: dist, value: [coord[0], coord[1], count] };
+  }).filter(d => d);
+
   chart.setOption({
-    tooltip: { trigger: 'item', formatter: '{b}: {c}人' },
+    tooltip: {
+      trigger: 'item',
+      formatter: function(p) {
+        if (p.seriesType === 'scatter') {
+          return p.name + ': ' + p.value[2] + '人';
+        }
+        return p.name + ': ' + (p.value || 0) + '人';
+      }
+    },
     visualMap: {
-      min: 0, max: Math.max(...data.map(d => d.value), 1),
+      min: 0, max: Math.max(...areaData.map(d => d.value), 1),
       inRange: { color: ['#e0f2f1','#80cbc4','#26a69a','#00897b','#004d40'] },
       textStyle: { fontSize: 11 }, left: 10, bottom: 10
     },
-    series: [{
-      type: 'map', map: 'shenyang', roam: true,
-      label: { show: true, fontSize: 10 },
-      emphasis: { label: { fontSize: 12, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffd166' } },
-      data: data
-    }]
+    geo: { map: 'shenyang', roam: true, silent: true, zoom: 1.1,
+      itemStyle: { areaColor: '#e0f2f1', borderColor: '#80cbc4' },
+      emphasis: { itemStyle: { areaColor: '#ffd166' } }
+    },
+    series: [
+      {
+        type: 'map', map: 'shenyang', roam: true, geoIndex: 0,
+        label: { show: true, fontSize: 10 },
+        emphasis: { label: { fontSize: 12, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffd166' } },
+        data: areaData
+      },
+      {
+        type: 'scatter', coordinateSystem: 'geo',
+        symbol: LOGO_SYMBOL, symbolSize: 22,
+        data: scatterData,
+        label: { show: true, formatter: p => p.value[2] + '人', position: 'right', fontSize: 11, color: '#00695c', fontWeight: 'bold' },
+        zlevel: 2
+      }
+    ]
   }, true);
 }
 
@@ -1600,7 +1744,7 @@ function renderTable() {
       <td>${m.name}</td>
       <td><span class="tag ${posTag[m.position] || 'tag-other'}">${m.position || '-'}</span></td>
       <td>${m.gender}</td>
-      <td>${m.ageGroup}</td>
+      <td>${m.age || '-'}</td>
       <td>${m.politicalStatus}</td>
       <td>${m.industry}</td>
       <td>${m.district || m.region}</td>
@@ -1618,10 +1762,10 @@ function handleSearch() {
 }
 
 function exportCSV() {
-  const headers = ['序号','会员姓名','会内职位','性别','年龄段','政治面貌分类','所属行业','区域'];
+  const headers = ['序号','会员姓名','会内职位','性别','年龄','政治面貌分类','所属行业','区域'];
   let csv = '\uFEFF' + headers.join(',') + '\n';
   filteredData.forEach((m, i) => {
-    csv += [i+1, m.name, m.position, m.gender, m.ageGroup, m.politicalStatus, m.industry, m.district || m.region]
+    csv += [i+1, m.name, m.position, m.gender, m.age || m.ageGroup, m.politicalStatus, m.industry, m.district || m.region]
       .map(v => '"' + String(v || '').replace(/"/g, '""') + '"').join(',') + '\n';
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });

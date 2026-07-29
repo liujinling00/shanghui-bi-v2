@@ -881,29 +881,47 @@ const META_SUBTITLE = 'BI 智能看板';
 // ========== CSV 解析器 ==========
 function parseCSV(text) {
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-  const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim());
-  if (lines.length < 2) return [];
 
-  function parseLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
-        else { inQuotes = !inQuotes; }
-      } else if (ch === ',' && !inQuotes) {
-        result.push(current); current = '';
-      } else {
-        current += ch;
+  // Parse entire text char-by-char to handle quoted fields with embedded newlines
+  const rows = [];
+  let row = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      if (inQuotes && text[i+1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if ((ch === '\r' || ch === '\n') && !inQuotes) {
+      // End of field
+      row.push(current); current = '';
+      // Handle \r\n
+      if (ch === '\r' && text[i+1] === '\n') i++;
+      // End of row
+      if (row.some(c => c.trim() !== '')) {
+        rows.push(row);
       }
+      row = [];
+    } else if (ch === ',' && !inQuotes) {
+      row.push(current); current = '';
+    } else {
+      current += ch;
     }
-    result.push(current);
-    return result.map(s => s.trim());
+  }
+  // Last field
+  if (current.trim() !== '' || row.length > 0) {
+    row.push(current);
+    if (row.some(c => c.trim() !== '')) rows.push(row);
   }
 
-  const headers = parseLine(lines[0]);
+  if (rows.length < 2) return [];
+  const lines = rows.map(r => r.map(s => s.trim()));
+
+  function parseLine(line) {
+    return line;
+  }
+
+  const headers = lines[0];
 
   const fieldMap = {
     '姓名':'name','name':'name',
@@ -935,6 +953,9 @@ function parseCSV(text) {
     const m = { id: members.length + 1 };
     for (const [field, idx] of Object.entries(colMap)) {
       let val = cells[idx] || '';
+      if (typeof val === 'string') {
+        val = val.replace(/\n/g, ' ').replace(/\r/g, '').trim();
+      }
       if (field === 'joinYear' || field === 'goodDeeds') {
         val = parseInt(val) || 0;
       }

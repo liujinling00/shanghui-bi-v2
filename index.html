@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沈阳市年轻一代民营企业家商会 · BI 智能看板</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+/* ========== 全局变量 ========== */
+:root {
+  --primary: #1e3c72;
+  --primary-light: #2a5298;
+  --accent: #f0a500;
+  --accent-light: #ffd166;
+  --success: #00b09b;
+  --danger: #e74c3c;
+  --bg: #f0f2f5;
+  --card-bg: #ffffff;
+  --text: #1a1a2e;
+  --text-secondary: #6c757d;
+  --border: #e8e8e8;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-hover: 0 4px 20px rgba(0,0,0,0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ========== 顶部导航栏 ========== */
+.header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, #1a5276 100%);
+  color: #fff;
+  padding: 18px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 20px rgba(30, 60, 114, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left { display: flex; align-items: center; gap: 16px; }
+
+.header-logo {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: bold;
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(240, 165, 0, 0.4);
+}
+
+.header-title { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+.header-subtitle { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.refresh-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 6px;
+  transition: var(--transition);
+}
+.refresh-btn:hover { background: rgba(255,255,255,0.28); }
+.refresh-btn .icon { font-size: 16px; }
+.refresh-btn.spinning .icon { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.auto-refresh-toggle {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; opacity: 0.9;
+}
+.auto-refresh-toggle input { cursor: pointer; }
+
+.update-time {
+  font-size: 12px; opacity: 0.7;
+  padding: 4px 12px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 20px;
+}
+
+/* ========== 主容器 ========== */
+.container { max-width: 1600px; margin: 0 auto; padding: 20px 24px; }
+
+.section-title {
+  font-size: 16px; font-weight: 700;
+  color: var(--text);
+  margin: 24px 0 12px;
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 12px;
+  border-left: 4px solid var(--primary-light);
+}
+.section-title .badge {
+  font-size: 11px; font-weight: 400;
+  background: var(--bg);
+  color: var(--text-secondary);
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+/* ========== 概览卡片 ========== */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.overview-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.overview-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.overview-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--gradient, linear-gradient(90deg, var(--primary), var(--primary-light)));
+}
+
+.card-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+.card-value {
+  font-size: 32px; font-weight: 800;
+  line-height: 1.2;
+  color: var(--text);
+}
+.card-value .unit { font-size: 14px; font-weight: 400; color: var(--text-secondary); margin-left: 4px; }
+.card-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+.card-trend {
+  font-size: 12px; margin-top: 8px;
+  display: flex; align-items: center; gap: 4px;
+}
+.card-trend.up { color: var(--success); }
+.card-trend.down { color: var(--danger); }
+.card-percent {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* 卡片配色 */
+.card-blue .card-icon { background: #e3f2fd; color: #1976d2; }
+.card-blue::before { background: linear-gradient(90deg, #1976d2, #42a5f5); }
+
+.card-green .card-icon { background: #e8f5e9; color: #2e7d32; }
+.card-green::before { background: linear-gradient(90deg, #2e7d32, #66bb6a); }
+
+.card-orange .card-icon { background: #fff3e0; color: #e65100; }
+.card-orange::before { background: linear-gradient(90deg, #e65100, #ff9800); }
+
+.card-purple .card-icon { background: #f3e5f5; color: #7b1fa2; }
+.card-purple::before { background: linear-gradient(90deg, #7b1fa2, #ab47bc); }
+
+.card-cyan .card-icon { background: #e0f7fa; color: #00838f; }
+.card-cyan::before { background: linear-gradient(90deg, #00838f, #26c6da); }
+
+.card-pink .card-icon { background: #fce4ec; color: #c2185b; }
+.card-pink::before { background: linear-gradient(90deg, #c2185b, #ec407a); }
+
+.card-teal .card-icon { background: #e0f2f1; color: #00695c; }
+.card-teal::before { background: linear-gradient(90deg, #00695c, #00897b); }
+
+.card-amber .card-icon { background: #fff8e1; color: #ff8f00; }
+.card-amber::before { background: linear-gradient(90deg, #ff8f00, #ffb300); }
+
+/* ========== 筛选区 ========== */
+.filter-bar {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.filter-item { display: flex; flex-direction: column; gap: 4px; }
+.filter-item label { font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+
+.filter-item select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: #fafafa;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+  min-width: 110px;
+}
+.filter-item select:hover { border-color: var(--primary-light); }
+.filter-item select:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(42,82,152,0.1); }
+
+.filter-actions { display: flex; gap: 8px; margin-left: auto; }
+.btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex; align-items: center; gap: 5px;
+}
+.btn-primary { background: var(--primary-light); color: #fff; }
+.btn-primary:hover { background: var(--primary); }
+.btn-secondary { background: #f0f0f0; color: var(--text-secondary); }
+.btn-secondary:hover { background: #e0e0e0; }
+
+/* ========== 图表网格 ========== */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.chart-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.chart-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+.chart-card:hover { box-shadow: var(--shadow-hover); }
+
+.chart-card-title {
+  font-size: 14px; font-weight: 700;
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.chart-container { width: 100%; height: 280px; }
+.chart-container.tall { height: 360px; }
+.chart-container.short { height: 240px; }
+
+/* ========== 地图区 ========== */
+.map-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ========== 明细表 ========== */
+.table-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.search-box {
+  position: relative;
+}
+.search-box input {
+  padding: 8px 12px 8px 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  width: 240px;
+  outline: none;
+  transition: var(--transition);
+}
+.search-box input:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(42,82,152,0.1); }
+.search-box .search-icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+th {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  white-space: nowrap;
+}
+
+tbody tr:hover { background: #f8faff; }
+tbody tr:nth-child(even) { background: #fcfcfd; }
+
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tag-president { background: #fff3e0; color: #e65100; }
+.tag-vp { background: #e3f2fd; color: #1565c0; }
+.tag-director { background: #e8f5e9; color: #2e7d32; }
+.tag-member { background: #f3e5f5; color: #7b1fa2; }
+.tag-active { background: #e0f2f1; color: #00695c; }
+.tag-inactive { background: #fce4ec; color: #c62828; }
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.pagination button {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  transition: var(--transition);
+}
+.pagination button:hover:not(:disabled) { border-color: var(--primary-light); color: var(--primary-light); }
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination-controls { display: flex; gap: 6px; align-items: center; }
+
+/* ========== 底部状态栏 ========== */
+.footer {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  margin-top: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.footer-info { display: flex; gap: 20px; flex-wrap: wrap; }
+.footer-info span { display: flex; align-items: center; gap: 4px; }
+
+/* ========== 加载状态 ========== */
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  flex-direction: column;
+  gap: 16px;
+}
+.loading-overlay.hidden { display: none; }
+.spinner {
+  width: 48px; height: 48px;
+  border: 4px solid #e0e0e0;
+  border-top-color: var(--primary-light);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.loading-text { font-size: 14px; color: var(--text-secondary); }
+
+/* ========== 错误提示 ========== */
+.error-banner {
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #e65100;
+}
+.error-banner.hidden { display: none; }
+
+/* ========== 响应式 ========== */
+@media (max-width: 1200px) {
+  .overview-grid { grid-template-columns: repeat(2, 1fr); }
+  .chart-grid { grid-template-columns: repeat(2, 1fr); }
+  .map-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .overview-grid { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .chart-grid-2 { grid-template-columns: 1fr; }
+  .header { flex-direction: column; gap: 12px; }
+  .container { padding: 12px; }
+  .search-box input { width: 100%; }
+}
+
+/* ========== 滚动条美化 ========== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+</style>
+</head>
+<body>
+
+<!-- 加载遮罩 -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">正在加载数据...</div>
+</div>
+
+<!-- 顶部导航 -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">商</div>
+    <div>
+      <div class="header-title">沈阳市年轻一代民营企业家商会 · BI 智能看板</div>
+      <div class="header-subtitle">SHENYANG YOUNG ENTREPRENEURS CHAMBER · DATA INTELLIGENCE</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="update-time" id="updateTime">更新于 --</div>
+    <label class="auto-refresh-toggle">
+      <input type="checkbox" id="autoRefreshToggle"> 自动刷新
+    </label>
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
+      <span class="icon">&#8635;</span> 刷新
+    </button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 错误提示 -->
+  <div class="error-banner hidden" id="errorBanner">
+    <span>&#9888;</span>
+    <span id="errorText">数据加载失败，请检查数据文件。</span>
+  </div>
+
+  <!-- 概览卡片 -->
+  <div class="section-title">
+    概览总览 <span class="badge" id="overviewBadge">OVERVIEW</span>
+  </div>
+  <div class="overview-grid" id="overviewGrid"></div>
+
+  <!-- 筛选区 -->
+  <div class="section-title">
+    条件筛选 <span class="badge">FILTERS</span>
+  </div>
+  <div class="filter-bar" id="filterBar">
+    <div class="filter-item">
+      <label>性别</label>
+      <select id="filterGender"><option value="">全部</option><option value="男">男</option><option value="女">女</option></select>
+    </div>
+    <div class="filter-item">
+      <label>年龄段</label>
+      <select id="filterAge"><option value="">全部</option></select>
+    </div>
+    <div class="filter-item">
+      <label>行业</label>
+      <select id="filterIndustry"><option value="">全部</option></select>
+    </div>
+    <div class="filter-item">
+      <label>区域</label>
+      <select id="filterRegion"><option value="">全部</option></select>
+    </div>
+    <div class="filter-item">
+      <label>职位</label>
+      <select id="filterPosition"><option value="">全部</option><option value="会长">会长</option><option value="副会长">副会长</option><option value="理事">理事</option><option value="会员">会员</option></select>
+    </div>
+    <div class="filter-item">
+      <label>政治面貌</label>
+      <select id="filterPolitical"><option value="">全部</option></select>
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-primary" onclick="applyFilters()">&#128269; 筛选</button>
+      <button class="btn btn-secondary" onclick="resetFilters()">&#8634; 重置</button>
+    </div>
+  </div>
+
+  <!-- 地图区 -->
+  <div class="section-title">
+    地理分布 <span class="badge">GEO MAPS</span>
+  </div>
+  <div class="map-grid">
+    <div class="chart-card">
+      <div class="chart-card-title">&#128205; 辽宁省商会企业分布</div>
+      <div class="chart-container tall" id="mapProvince"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">&#128205; 沈阳市各区会员热力图</div>
+      <div class="chart-container tall" id="mapShenyang"></div>
+    </div>
+  </div>
+
+  <!-- 分析图表 -->
+  <div class="section-title">
+    结构分析 <span class="badge">ANALYTICS</span>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-card-title">&#128202; 行业分布</div>
+      <div class="chart-container" id="chartIndustry"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">&#127874; 年龄结构</div>
+      <div class="chart-container" id="chartAge"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">&#127963; 政治面貌</div>
+      <div class="chart-container" id="chartPolitical"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">&#128101; 职位结构</div>
+      <div class="chart-container" id="chartPosition"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">&#128104;&#8205;&#128105; 性别比例</div>
+      <div class="chart-container" id="chartGender"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">&#128197; 入会时间趋势</div>
+      <div class="chart-container" id="chartJoinTrend"></div>
+    </div>
+  </div>
+
+  <!-- 交叉热力图 -->
+  <div class="section-title">
+    交叉分析 <span class="badge">CROSS ANALYSIS</span>
+  </div>
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-card-title">&#128260; 行业 &times; 区域 交叉热力图</div>
+      <div class="chart-container tall" id="chartHeatmap"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">&#128202; 行业 &times; 职位 分布对比</div>
+      <div class="chart-container tall" id="chartIndustryPosition"></div>
+    </div>
+  </div>
+
+  <!-- 明细表 -->
+  <div class="section-title">
+    会员明细 <span class="badge" id="tableBadge">MEMBER DETAILS</span>
+  </div>
+  <div class="table-card">
+    <div class="table-toolbar">
+      <div class="search-box">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" id="searchInput" placeholder="搜索姓名/公司/行业..." oninput="handleSearch()">
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary" onclick="exportCSV()">&#11015; 导出 CSV</button>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table id="memberTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>姓名</th>
+            <th>性别</th>
+            <th>年龄段</th>
+            <th>政治面貌</th>
+            <th>所属行业</th>
+            <th>区域</th>
+            <th>区县</th>
+            <th>会内职位</th>
+            <th>入会年份</th>
+            <th>会费状态</th>
+            <th>所属企业</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <span id="paginationInfo">共 0 条记录</span>
+      <div class="pagination-controls">
+        <button id="prevPage" onclick="changePage(-1)" disabled>&#9664; 上一页</button>
+        <span id="pageInfo">1 / 1</span>
+        <button id="nextPage" onclick="changePage(1)">下一页 &#9654;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部状态栏 -->
+  <div class="footer">
+    <div class="footer-info">
+      <span>&#128202; 数据源：商会会员管理系统 v2.0</span>
+      <span>&#128337; 更新于：<span id="footerUpdateTime">--</span></span>
+      <span>&#128100; 在籍：<span id="footerActive">--</span> 人</span>
+      <span>&#9873; 中共党员：<span id="footerParty">--</span> 人</span>
+    </div>
+    <div>&#169; 2026 沈阳市年轻一代民营企业家商会 · BI 智能看板</div>
+  </div>
+
+</div>
+
+<script>
+// ========== 全局状态 ==========
+let rawData = null;
+let filteredData = [];
+let currentPage = 1;
+const pageSize = 20;
+let searchKeyword = '';
+let charts = {};
+let autoRefreshTimer = null;
+
+const COLORS = ['#5470c6','#91cc75','#fac858','#ee6666','#73c0de','#3ba272','#fc8452','#9a60b4','#ea7ccc','#48b8d0','#61c0c0','#bbb37e'];
+
+// ========== 数据源配置 ==========
+// 修改这里的 URL 来切换数据源：
+// - 留空 '' → 默认读取同目录下的 data.json
+// - 填写 CSV 文件的 URL → 直接读取 CSV（支持远程 URL）
+// 示例：'members.csv' 或 'https://你的域名/members.csv' 或 'https://raw.githubusercontent.com/用户/仓库/main/members.csv'
+const DATA_SOURCE = 'members.csv';  // <-- 在这里填写你的 CSV 文件地址，留空则读取 data.json
+const META_TITLE = '沈阳市年轻一代民营企业家商会';
+const META_SUBTITLE = 'BI 智能看板';
+
+// ========== CSV 解析器 ==========
+function parseCSV(text) {
+  // 去除 BOM
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  // 解析一行（处理引号内的逗号）
+  function parseLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current); current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current);
+    return result.map(s => s.trim());
+  }
+
+  const headers = parseLine(lines[0]);
+
+  // 字段映射（支持中英文表头）
+  const fieldMap = {
+    '姓名':'name','name':'name',
+    '性别':'gender','gender':'gender',
+    '年龄段':'ageGroup','年龄':'ageGroup','age':'ageGroup',
+    '政治面貌':'politicalStatus','political':'politicalStatus',
+    '所属行业':'industry','行业':'industry','industry':'industry',
+    '区域':'region','region':'region',
+    '区县':'district','district':'district',
+    '会内职位':'position','职位':'position','position':'position',
+    '入会年份':'joinYear','入会时间':'joinYear','joinYear':'joinYear',
+    '会费状态':'membershipStatus','状态':'membershipStatus','status':'membershipStatus',
+    '所属企业':'company','企业':'company','company':'company',
+    '好人好事':'goodDeeds','goodDeeds':'goodDeeds'
+  };
+
+  const colMap = {};
+  headers.forEach((h, i) => {
+    const key = fieldMap[h];
+    if (key) colMap[key] = i;
+  });
+
+  const members = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseLine(lines[i]);
+    if (!cells[0]) continue;
+    const m = { id: members.length + 1 };
+    for (const [field, idx] of Object.entries(colMap)) {
+      let val = cells[idx] || '';
+      if (field === 'joinYear' || field === 'goodDeeds') {
+        val = parseInt(val) || 0;
+      }
+      m[field] = val;
+    }
+    // 确保必填字段有默认值
+    if (!m.membershipStatus) m.membershipStatus = '在籍';
+    if (!m.goodDeeds) m.goodDeeds = 0;
+    if (!m.company) m.company = '-';
+    members.push(m);
+  }
+  return members;
+}
+
+// ========== 数据加载 ==========
+async function loadData() {
+  showLoading(true);
+  try {
+    let members = null;
+    let lastUpdate = new Date().toISOString().slice(0, 10);
+
+    if (DATA_SOURCE && DATA_SOURCE.endsWith('.csv')) {
+      // 模式一：从 CSV 加载
+      const response = await fetch(DATA_SOURCE + '?t=' + Date.now());
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const csvText = await response.text();
+      members = parseCSV(csvText);
+      if (members.length === 0) throw new Error('CSV 文件为空或格式不正确');
+      rawData = {
+        meta: { title: META_TITLE, subtitle: META_SUBTITLE, lastUpdate: lastUpdate, version: '2.0' },
+        members: members
+      };
+    } else {
+      // 模式二：从 JSON 加载（默认）
+      const response = await fetch('data.json?t=' + Date.now());
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      rawData = await response.json();
+    }
+
+    showError(false);
+    initFilters();
+    applyFilters();
+    document.getElementById('updateTime').textContent = '更新于 ' + rawData.meta.lastUpdate;
+    document.getElementById('footerUpdateTime').textContent = rawData.meta.lastUpdate;
+  } catch (e) {
+    console.error('Load error:', e);
+    showError(true, '数据加载失败：' + e.message + '。请确保数据文件存在且格式正确。');
+  } finally {
+    showLoading(false);
+  }
+}
+
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
+}
+function showError(show, msg) {
+  const banner = document.getElementById('errorBanner');
+  banner.classList.toggle('hidden', !show);
+  if (msg) document.getElementById('errorText').textContent = msg;
+}
+
+// ========== 筛选器初始化 ==========
+function initFilters() {
+  const members = rawData.members;
+  const fillSelect = (id, values) => {
+    const sel = document.getElementById(id);
+    const current = sel.value;
+    const options = '<option value="">全部</option>' +
+      [...new Set(values)].sort().map(v => '<option value="'+v+'">'+v+'</option>').join('');
+    sel.innerHTML = options;
+    sel.value = current;
+  };
+  fillSelect('filterAge', members.map(m => m.ageGroup));
+  fillSelect('filterIndustry', members.map(m => m.industry));
+  fillSelect('filterRegion', members.map(m => m.region));
+  fillSelect('filterPolitical', members.map(m => m.politicalStatus));
+}
+
+// ========== 筛选逻辑 ==========
+function applyFilters() {
+  const fGender = document.getElementById('filterGender').value;
+  const fAge = document.getElementById('filterAge').value;
+  const fIndustry = document.getElementById('filterIndustry').value;
+  const fRegion = document.getElementById('filterRegion').value;
+  const fPosition = document.getElementById('filterPosition').value;
+  const fPolitical = document.getElementById('filterPolitical').value;
+
+  filteredData = rawData.members.filter(m => {
+    if (fGender && m.gender !== fGender) return false;
+    if (fAge && m.ageGroup !== fAge) return false;
+    if (fIndustry && m.industry !== fIndustry) return false;
+    if (fRegion && m.region !== fRegion) return false;
+    if (fPosition && m.position !== fPosition) return false;
+    if (fPolitical && m.politicalStatus !== fPolitical) return false;
+    return true;
+  });
+
+  currentPage = 1;
+  renderOverview();
+  renderAllCharts();
+  renderTable();
+  updateFooter();
+}
+
+function resetFilters() {
+  ['filterGender','filterAge','filterIndustry','filterRegion','filterPosition','filterPolitical'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  applyFilters();
+}
+
+// ========== 概览卡片 ==========
+function renderOverview() {
+  const data = filteredData;
+  const total = data.length;
+  const male = data.filter(m => m.gender === '男').length;
+  const female = data.filter(m => m.gender === '女').length;
+  const active = data.filter(m => m.membershipStatus === '在籍').length;
+  const president = data.filter(m => m.position === '会长').length;
+  const vp = data.filter(m => m.position === '副会长').length;
+  const director = data.filter(m => m.position === '理事').length;
+  const member = data.filter(m => m.position === '会员').length;
+  const partyMembers = data.filter(m => m.politicalStatus === '中共党员').length;
+  const activeRate = total > 0 ? ((active / total) * 100).toFixed(1) : 0;
+  const maleRate = total > 0 ? ((male / total) * 100).toFixed(1) : 0;
+  const femaleRate = total > 0 ? ((female / total) * 100).toFixed(1) : 0;
+
+  const cards = [
+    {cls:'card-blue', icon:'&#127970;', value:total, unit:'人', label:'在籍会员总数', trend:'&#128202; 全部会员单位', trendCls:'up'},
+    {cls:'card-cyan', icon:'&#128104;', value:male, unit:'人', label:'男性会员', percent:'占比 '+maleRate+'% · 主力军', trend:'&#128200; '+maleRate+'%', trendCls:'up'},
+    {cls:'card-pink', icon:'&#128105;', value:female, unit:'人', label:'女性会员', percent:'占比 '+femaleRate+'% · 半边天', trend:'&#128200; '+femaleRate+'%', trendCls:'up'},
+    {cls:'card-green', icon:'&#128200;', value:activeRate, unit:'%', label:'在籍率', percent:'含未缴费 '+ (total-active) +' 人', trend: activeRate >= 90 ? '&#128077; 良好' : '&#9888; 需关注', trendCls: activeRate >= 90 ? 'up' : 'down'},
+    {cls:'card-amber', icon:'&#128081;', value:president, unit:'人', label:'会长', trend:'&#11088; 商会领军人物', trendCls:'up'},
+    {cls:'card-purple', icon:'&#11088;', value:vp, unit:'人', label:'副会长', percent:'占比 '+ (total>0?(vp/total*100).toFixed(1):0) +'%', trend:'&#128170; 商会骨干', trendCls:'up'},
+    {cls:'card-teal', icon:'&#127894;', value:director, unit:'人', label:'理事', percent:'占比 '+ (total>0?(director/total*100).toFixed(1):0) +'%', trend:'&#128092; 中坚力量', trendCls:'up'},
+    {cls:'card-orange', icon:'&#129309;', value:member, unit:'人', label:'会员', percent:'占比 '+ (total>0?(member/total*100).toFixed(1):0) +'%', trend:'&#128101; 商会主体', trendCls:'up'}
+  ];
+
+  document.getElementById('overviewGrid').innerHTML = cards.map(c => `
+    <div class="overview-card ${c.cls}">
+      <div class="card-icon">${c.icon}</div>
+      <div class="card-value">${c.value}<span class="unit">${c.unit}</span></div>
+      <div class="card-label">${c.label}</div>
+      ${c.percent ? '<div class="card-percent">'+c.percent+'</div>' : ''}
+      <div class="card-trend ${c.trendCls}">${c.trend}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('overviewBadge').textContent = 'OVERVIEW · 共 ' + total + ' 人';
+}
+
+// ========== 图表渲染 ==========
+function renderAllCharts() {
+  renderChartIndustry();
+  renderChartAge();
+  renderChartPolitical();
+  renderChartPosition();
+  renderChartGender();
+  renderChartJoinTrend();
+  renderChartHeatmap();
+  renderChartIndustryPosition();
+  renderMapProvince();
+  renderMapShenyang();
+}
+
+function getChart(id) {
+  if (!charts[id]) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    charts[id] = echarts.init(el);
+  }
+  return charts[id];
+}
+
+function renderChartIndustry() {
+  const chart = getChart('chartIndustry');
+  if (!chart) return;
+  const counts = {};
+  filteredData.forEach(m => { counts[m.industry] = (counts[m.industry] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+    legend: { type: 'scroll', orient: 'vertical', right: 5, top: 'center', itemWidth: 10, itemHeight: 10, textStyle: {fontSize: 11} },
+    color: COLORS,
+    series: [{
+      type: 'pie', radius: ['40%','70%'], center: ['35%','50%'],
+      label: { show: false },
+      emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
+      data: sorted.map(([name, value]) => ({name, value}))
+    }]
+  });
+}
+
+function renderChartAge() {
+  const chart = getChart('chartAge');
+  if (!chart) return;
+  const order = ['25-30岁','31-35岁','36-40岁','41-45岁','46-50岁','51-55岁'];
+  const counts = {};
+  order.forEach(a => counts[a] = 0);
+  filteredData.forEach(m => { if(counts[m.ageGroup] !== undefined) counts[m.ageGroup]++; });
+  chart.setOption({
+    tooltip: { trigger: 'axis', formatter: '{b}: {c}人' },
+    grid: { left: '8%', right: '5%', bottom: '10%', top: '10%' },
+    xAxis: { type: 'category', data: order, axisLabel: { fontSize: 10, rotate: 20 } },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [{
+      type: 'bar', data: order.map(a => counts[a]),
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          {offset: 0, color: '#42a5f5'}, {offset: 1, color: '#1976d2'}
+        ]),
+        borderRadius: [6,6,0,0]
+      },
+      barWidth: '50%',
+      label: { show: true, position: 'top', fontSize: 11 }
+    }]
+  });
+}
+
+function renderChartPolitical() {
+  const chart = getChart('chartPolitical');
+  if (!chart) return;
+  const counts = {};
+  filteredData.forEach(m => { counts[m.politicalStatus] = (counts[m.politicalStatus] || 0) + 1; });
+  const data = Object.entries(counts).map(([name, value]) => ({name, value}));
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+    legend: { bottom: 5, itemWidth: 10, itemHeight: 10, textStyle: {fontSize: 11} },
+    color: ['#e74c3c','#3498db','#95a5a6','#9b59b6'],
+    series: [{
+      type: 'pie', radius: '60%', center: ['50%','45%'],
+      label: { formatter: '{b}\n{d}%', fontSize: 11 },
+      data: data
+    }]
+  });
+}
+
+function renderChartPosition() {
+  const chart = getChart('chartPosition');
+  if (!chart) return;
+  const order = ['会长','副会长','理事','会员'];
+  const counts = {};
+  order.forEach(p => counts[p] = 0);
+  filteredData.forEach(m => { if(counts[m.position] !== undefined) counts[m.position]++; });
+  chart.setOption({
+    tooltip: { trigger: 'axis', formatter: '{b}: {c}人' },
+    grid: { left: '8%', right: '5%', bottom: '10%', top: '15%' },
+    xAxis: { type: 'category', data: order, axisLabel: { fontSize: 11 } },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [{
+      type: 'bar', data: order.map(p => counts[p]),
+      itemStyle: {
+        color: function(params) {
+          const colors = ['#ff8f00','#1976d2','#2e7d32','#7b1fa2'];
+          return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            {offset: 0, color: colors[params.dataIndex]},
+            {offset: 1, color: colors[params.dataIndex] + '88'}
+          ]);
+        },
+        borderRadius: [6,6,0,0]
+      },
+      barWidth: '45%',
+      label: { show: true, position: 'top', fontSize: 11 }
+    }]
+  });
+}
+
+function renderChartGender() {
+  const chart = getChart('chartGender');
+  if (!chart) return;
+  const male = filteredData.filter(m => m.gender === '男').length;
+  const female = filteredData.filter(m => m.gender === '女').length;
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+    legend: { bottom: 5, textStyle: {fontSize: 12} },
+    color: ['#42a5f5','#ec407a'],
+    series: [{
+      type: 'pie', radius: ['45%','70%'], center: ['50%','45%'],
+      label: { formatter: '{b}\n{d}%', fontSize: 12 },
+      data: [
+        {name: '男', value: male},
+        {name: '女', value: female}
+      ]
+    }]
+  });
+}
+
+function renderChartJoinTrend() {
+  const chart = getChart('chartJoinTrend');
+  if (!chart) return;
+  const counts = {};
+  filteredData.forEach(m => { counts[m.joinYear] = (counts[m.joinYear] || 0) + 1; });
+  const years = Object.keys(counts).sort();
+  const values = years.map(y => counts[y]);
+  const cumulative = [];
+  let sum = 0;
+  values.forEach(v => { sum += v; cumulative.push(sum); });
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['当年入会','累计会员'], top: 0, textStyle: {fontSize: 11} },
+    grid: { left: '8%', right: '8%', bottom: '10%', top: '18%' },
+    xAxis: { type: 'category', data: years, axisLabel: { fontSize: 11 } },
+    yAxis: [
+      { type: 'value', name: '当年', minInterval: 1, axisLabel: {fontSize: 10} },
+      { type: 'value', name: '累计', minInterval: 1, axisLabel: {fontSize: 10} }
+    ],
+    series: [
+      {
+        name: '当年入会', type: 'bar', data: values,
+        itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#26c6da'},{offset:1,color:'#00838f'}]), borderRadius: [4,4,0,0] },
+        barWidth: '40%'
+      },
+      {
+        name: '累计会员', type: 'line', yAxisIndex: 1, data: cumulative,
+        smooth: true, symbol: 'circle', symbolSize: 6,
+        lineStyle: { width: 2, color: '#ff8f00' },
+        itemStyle: { color: '#ff8f00' },
+        areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(255,143,0,0.25)'},{offset:1,color:'rgba(255,143,0,0)'}]) }
+      }
+    ]
+  });
+}
+
+function renderChartHeatmap() {
+  const chart = getChart('chartHeatmap');
+  if (!chart) return;
+  const industries = [...new Set(filteredData.map(m => m.industry))].sort();
+  const regions = [...new Set(filteredData.map(m => m.region))].sort();
+  const matrix = [];
+  let maxVal = 0;
+  industries.forEach((ind, i) => {
+    regions.forEach((reg, j) => {
+      const count = filteredData.filter(m => m.industry === ind && m.region === reg).length;
+      matrix.push([j, i, count]);
+      if (count > maxVal) maxVal = count;
+    });
+  });
+  chart.setOption({
+    tooltip: { position: 'top', formatter: p => regions[p.data[0]] + ' / ' + industries[p.data[1]] + ': ' + p.data[2] + '人' },
+    grid: { left: '15%', right: '10%', bottom: '20%', top: '8%' },
+    xAxis: { type: 'category', data: regions, splitArea: { show: true }, axisLabel: { fontSize: 10, rotate: 25 } },
+    yAxis: { type: 'category', data: industries, splitArea: { show: true }, axisLabel: { fontSize: 10 } },
+    visualMap: {
+      min: 0, max: maxVal || 1, calculable: true, orient: 'horizontal',
+      left: 'center', bottom: '2%',
+      inRange: { color: ['#e0f2f1','#26a69a','#00897b','#004d40'] },
+      textStyle: { fontSize: 10 }
+    },
+    series: [{
+      type: 'heatmap', data: matrix,
+      label: { show: true, fontSize: 10 },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.5)' } }
+    }]
+  });
+}
+
+function renderChartIndustryPosition() {
+  const chart = getChart('chartIndustryPosition');
+  if (!chart) return;
+  const industries = [...new Set(filteredData.map(m => m.industry))].sort();
+  const positions = ['会长','副会长','理事','会员'];
+  const series = positions.map((pos, idx) => ({
+    name: pos, type: 'bar', stack: 'total',
+    data: industries.map(ind => filteredData.filter(m => m.industry === ind && m.position === pos).length),
+    itemStyle: { color: ['#ff8f00','#1976d2','#2e7d32','#7b1fa2'][idx] },
+    emphasis: { focus: 'series' }
+  }));
+  chart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { top: 0, textStyle: { fontSize: 11 } },
+    grid: { left: '10%', right: '5%', bottom: '15%', top: '15%' },
+    xAxis: { type: 'category', data: industries, axisLabel: { fontSize: 9, rotate: 35 } },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: series
+  });
+}
+
+// ========== 地图 ==========
+async function loadMap(url, mapName) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return false;
+    const geoJson = await response.json();
+    echarts.registerMap(mapName, geoJson);
+    return true;
+  } catch (e) {
+    console.warn('Map load failed:', mapName, e);
+    return false;
+  }
+}
+
+async function renderMapProvince() {
+  const chart = getChart('mapProvince');
+  if (!chart) return;
+  const ok = await loadMap('https://geo.datav.aliyun.com/areas_v3/bound/210000_full.json', 'liaoning');
+  if (!ok) {
+    // Fallback: bar chart
+    const counts = {};
+    filteredData.forEach(m => { counts[m.region] = (counts[m.region] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+    chart.setOption({
+      tooltip: { trigger: 'axis', formatter: '{b}: {c}人' },
+      grid: { left: '15%', right: '5%', bottom: '10%', top: '5%' },
+      xAxis: { type: 'value', minInterval: 1 },
+      yAxis: { type: 'category', data: sorted.map(s => s[0]).reverse(), axisLabel: { fontSize: 11 } },
+      series: [{
+        type: 'bar', data: sorted.map(s => s[1]).reverse(),
+        itemStyle: { color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#1976d2'},{offset:1,color:'#42a5f5'}]), borderRadius: [0,6,6,0] },
+        label: { show: true, position: 'right', fontSize: 11 }
+      }]
+    });
+    return;
+  }
+  const counts = {};
+  filteredData.forEach(m => { counts[m.region] = (counts[m.region] || 0) + 1; });
+  const data = Object.entries(counts).map(([name, value]) => ({name, value}));
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}人' },
+    visualMap: {
+      min: 0, max: Math.max(...data.map(d => d.value), 1),
+      inRange: { color: ['#e3f2fd','#90caf9','#42a5f5','#1976d2','#0d47a1'] },
+      textStyle: { fontSize: 11 }, left: 10, bottom: 10
+    },
+    series: [{
+      type: 'map', map: 'liaoning', roam: true,
+      label: { show: true, fontSize: 10 },
+      emphasis: { label: { fontSize: 12, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffd166' } },
+      data: data
+    }]
+  });
+}
+
+async function renderMapShenyang() {
+  const chart = getChart('mapShenyang');
+  if (!chart) return;
+  const ok = await loadMap('https://geo.datav.aliyun.com/areas_v3/bound/210100_full.json', 'shenyang');
+  if (!ok) {
+    // Fallback: bar chart
+    const syData = filteredData.filter(m => m.region === '沈阳市');
+    const counts = {};
+    syData.forEach(m => { counts[m.district] = (counts[m.district] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+    chart.setOption({
+      tooltip: { trigger: 'axis', formatter: '{b}: {c}人' },
+      grid: { left: '15%', right: '5%', bottom: '10%', top: '5%' },
+      xAxis: { type: 'value', minInterval: 1 },
+      yAxis: { type: 'category', data: sorted.map(s => s[0]).reverse(), axisLabel: { fontSize: 11 } },
+      series: [{
+        type: 'bar', data: sorted.map(s => s[1]).reverse(),
+        itemStyle: { color: new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#00897b'},{offset:1,color:'#26c6da'}]), borderRadius: [0,6,6,0] },
+        label: { show: true, position: 'right', fontSize: 11 }
+      }]
+    });
+    return;
+  }
+  const syData = filteredData.filter(m => m.region === '沈阳市');
+  const counts = {};
+  syData.forEach(m => { counts[m.district] = (counts[m.district] || 0) + 1; });
+  const data = Object.entries(counts).map(([name, value]) => ({name: name.replace('区','').replace('县','').replace('市',''), value}));
+  // Also try matching with full names
+  const dataFull = Object.entries(counts).map(([name, value]) => ({name, value}));
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c}人' },
+    visualMap: {
+      min: 0, max: Math.max(...dataFull.map(d => d.value), 1),
+      inRange: { color: ['#e0f2f1','#80cbc4','#26a69a','#00897b','#004d40'] },
+      textStyle: { fontSize: 11 }, left: 10, bottom: 10
+    },
+    series: [{
+      type: 'map', map: 'shenyang', roam: true,
+      label: { show: true, fontSize: 10 },
+      emphasis: { label: { fontSize: 12, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffd166' } },
+      data: dataFull
+    }]
+  });
+}
+
+// ========== 明细表 ==========
+function renderTable() {
+  let data = filteredData;
+  if (searchKeyword) {
+    const kw = searchKeyword.toLowerCase();
+    data = data.filter(m =>
+      (m.name && m.name.toLowerCase().includes(kw)) ||
+      (m.company && m.company.toLowerCase().includes(kw)) ||
+      (m.industry && m.industry.toLowerCase().includes(kw))
+    );
+  }
+
+  const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * pageSize;
+  const pageData = data.slice(start, start + pageSize);
+
+  const posTag = { '会长':'tag-president','副会长':'tag-vp','理事':'tag-director','会员':'tag-member' };
+  const statusTag = { '在籍':'tag-active','未缴费':'tag-inactive' };
+
+  document.getElementById('tableBody').innerHTML = pageData.map((m, i) => `
+    <tr>
+      <td>${start + i + 1}</td>
+      <td>${m.name}</td>
+      <td>${m.gender}</td>
+      <td>${m.ageGroup}</td>
+      <td>${m.politicalStatus}</td>
+      <td>${m.industry}</td>
+      <td>${m.region}</td>
+      <td>${m.district}</td>
+      <td><span class="tag ${posTag[m.position] || ''}">${m.position}</span></td>
+      <td>${m.joinYear}</td>
+      <td><span class="tag ${statusTag[m.membershipStatus] || ''}">${m.membershipStatus}</span></td>
+      <td>${m.company || '-'}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('paginationInfo').textContent = '共 ' + data.length + ' 条记录';
+  document.getElementById('pageInfo').textContent = currentPage + ' / ' + totalPages;
+  document.getElementById('prevPage').disabled = currentPage <= 1;
+  document.getElementById('nextPage').disabled = currentPage >= totalPages;
+  document.getElementById('tableBadge').textContent = 'MEMBER DETAILS · ' + data.length + ' 条';
+}
+
+function changePage(delta) {
+  currentPage += delta;
+  renderTable();
+}
+
+function handleSearch() {
+  searchKeyword = document.getElementById('searchInput').value.trim();
+  currentPage = 1;
+  renderTable();
+}
+
+function exportCSV() {
+  const headers = ['#','姓名','性别','年龄段','政治面貌','所属行业','区域','区县','会内职位','入会年份','会费状态','所属企业'];
+  let csv = '\uFEFF' + headers.join(',') + '\n';
+  filteredData.forEach((m, i) => {
+    csv += [i+1, m.name, m.gender, m.ageGroup, m.politicalStatus, m.industry, m.region, m.district, m.position, m.joinYear, m.membershipStatus, m.company || '']
+      .map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',') + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '商会会员明细_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ========== 底部状态 ==========
+function updateFooter() {
+  const active = filteredData.filter(m => m.membershipStatus === '在籍').length;
+  const party = filteredData.filter(m => m.politicalStatus === '中共党员').length;
+  document.getElementById('footerActive').textContent = active;
+  document.getElementById('footerParty').textContent = party;
+}
+
+// ========== 刷新 ==========
+function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  loadData().then(() => {
+    setTimeout(() => btn.classList.remove('spinning'), 500);
+  });
+}
+
+// ========== 自动刷新 ==========
+document.getElementById('autoRefreshToggle').addEventListener('change', function() {
+  if (this.checked) {
+    autoRefreshTimer = setInterval(refreshData, 60000);
+  } else {
+    if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+  }
+});
+
+// ========== 窗口调整 ==========
+window.addEventListener('resize', () => {
+  Object.values(charts).forEach(c => c && c.resize());
+});
+
+// ========== 启动 ==========
+loadData();
+</script>
+</body>
+</html>
